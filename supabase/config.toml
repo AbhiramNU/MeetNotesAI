@@ -1,0 +1,12 @@
+[api]
+enabled = true
+port = 54321
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[db]
+port = 54322
+
+[functions]
