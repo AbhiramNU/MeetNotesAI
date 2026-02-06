@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
-  Mic, Square, Upload, ArrowLeft, Play, Pause,
-  Volume2, Settings, Users, Calendar, FileAudio,
+  Mic, Square, Upload, ArrowLeft,
+  Settings, Users, Calendar, FileAudio,
   Zap, Brain, CheckCircle
 } from 'lucide-react'
 import { FluidBackground } from '@/components/ui/FluidBackground'
@@ -192,7 +192,7 @@ export default function RecordingPage() {
 
     } catch (error) {
       console.error('Error processing audio:', error)
-      alert(`Error processing audio: ${error.message}`)
+      alert(`Error processing audio: ${(error as Error).message}`)
     } finally {
       setProcessing(false)
     }

@@ -120,7 +120,7 @@ export default function Dashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 fade-in-up delay-100">
-          {stats.map((stat, index) => (
+          {stats.map((stat, _) => (
             <div key={stat.label} className="glass-panel rounded-2xl p-6 hover:bg-white/5 transition-colors duration-300 group">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 group-hover:border-orange-500/30 transition-colors">

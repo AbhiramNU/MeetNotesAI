@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import type { Meeting, Transcript, AIInsights } from '@/types'
@@ -355,7 +354,7 @@ ${transcripts.map(t => `${speakerNames[t.speaker_id] || t.speaker_name}: ${t.tex
                     )}
                     <span className="mx-2 text-zinc-600 text-xs">•</span>
                     <span className="text-xs text-zinc-500 font-mono">
-                      {formatTimestamp(transcript.timestamp)}
+                      {formatTimestamp(transcript.timestamp || 0)}
                     </span>
                   </div>
 
