@@ -20,10 +20,6 @@ interface AIInsights {
     owner?: string
     deadline?: string
   }>
-  deadlines: Array<{
-    date: string
-    description: string
-  }>
 }
 
 serve(async (req) => {
@@ -33,14 +29,20 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Edge Function called with method:', req.method)
+
     // Get environment variables
     const DEEPGRAM_API_KEY = Deno.env.get('DEEPGRAM_API_KEY')
     const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY')
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    if (!DEEPGRAM_API_KEY || !GOOGLE_AI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Missing required environment variables')
+    if (!DEEPGRAM_API_KEY || !GOOGLE_AI_API_KEY) {
+      throw new Error('Missing AI API keys. Please add DEEPGRAM_API_KEY and GOOGLE_AI_API_KEY to Supabase Edge Function Secrets.')
+    }
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Missing Supabase configuration')
     }
 
     // Initialize Supabase client
@@ -56,142 +58,113 @@ serve(async (req) => {
       throw new Error('Missing required fields: audio, title, or userId')
     }
 
-    console.log(`Processing audio for meeting: ${meetingTitle}`)
+    console.log(`Processing audio for meeting: ${meetingTitle}, Size: ${audioFile.size} bytes`)
 
-    // Step 1: Transcribe audio with Deepgram
-    const audioBuffer = await audioFile.arrayBuffer()
-    
-    const deepgramResponse = await fetch('https://api.deepgram.com/v1/listen', {
+    // 1. Transcribe with Deepgram
+    console.log('Sending audio to Deepgram...')
+    // Added detect_language=true to support Hindi, Kannada, and English automatically
+    const deepgramResponse = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&diarize=true&punctuate=true&detect_language=true', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${DEEPGRAM_API_KEY}`,
         'Content-Type': audioFile.type || 'audio/wav',
       },
-      body: audioBuffer,
-      // Add query parameters for better transcription
-      // Note: In a real implementation, you'd add these as URL params
+      body: audioFile,
     })
 
     if (!deepgramResponse.ok) {
-      throw new Error(`Deepgram API error: ${deepgramResponse.statusText}`)
+      const errorText = await deepgramResponse.text()
+      throw new Error(`Deepgram API error: ${deepgramResponse.status} ${errorText}`)
     }
 
     const deepgramData = await deepgramResponse.json()
-    console.log('Deepgram transcription completed')
+    console.log('Deepgram transcription complete')
 
-    // Extract transcript segments
-    const segments: TranscriptSegment[] = []
-    
-    if (deepgramData.results?.channels?.[0]?.alternatives?.[0]) {
-      const words = deepgramData.results.channels[0].alternatives[0].words || []
-      
-      // Group words by speaker (simplified approach)
-      let currentSpeaker = 'Speaker 1'
-      let currentText = ''
-      let currentStart = 0
-      
-      for (const word of words) {
-        // In a real implementation, you'd use Deepgram's diarization
-        // For now, we'll create segments every 30 seconds or so
-        if (word.start - currentStart > 30 || currentText.length > 200) {
-          if (currentText.trim()) {
-            segments.push({
-              speaker: currentSpeaker,
-              text: currentText.trim(),
-              start: currentStart,
-              end: word.start
-            })
-          }
-          currentSpeaker = currentSpeaker === 'Speaker 1' ? 'Speaker 2' : 'Speaker 1'
-          currentText = word.word + ' '
-          currentStart = word.start
-        } else {
-          currentText += word.word + ' '
-        }
-      }
-      
-      // Add final segment
-      if (currentText.trim()) {
-        segments.push({
-          speaker: currentSpeaker,
-          text: currentText.trim(),
-          start: currentStart,
-          end: words[words.length - 1]?.end || currentStart + 10
+    // Process transcript
+    const paragraphs = deepgramData.results?.channels[0]?.alternatives[0]?.paragraphs?.paragraphs || []
+    const words = deepgramData.results?.channels[0]?.alternatives[0]?.words || []
+
+    let fullTranscriptText = ''
+    const formattedTranscript: TranscriptSegment[] = []
+
+    // If we have paragraphs (diarized), use them
+    if (paragraphs.length > 0) {
+      paragraphs.forEach((p: any) => {
+        const text = p.sentences.map((s: any) => s.text).join(' ')
+        fullTranscriptText += `${p.speaker > -1 ? `Speaker ${p.speaker}` : 'Unknown'}: ${text}\n\n`
+
+        formattedTranscript.push({
+          speaker: p.speaker > -1 ? `Speaker ${p.speaker}` : 'Unknown',
+          text: text,
+          start: p.start,
+          end: p.end
         })
+      })
+    } else {
+      // Fallback if no paragraphs
+      const text = deepgramData.results?.channels[0]?.alternatives[0]?.transcript
+      fullTranscriptText = text
+      formattedTranscript.push({
+        speaker: 'Speaker 0',
+        text: text,
+        start: 0,
+        end: deepgramData.metadata?.duration || 0
+      })
+    }
+
+    // 2. Generate Insights with Gemini
+    console.log('Generating insights with Gemini...')
+    const prompt = `
+      Analyze the following meeting transcript and provide a summary and a list of action items/tasks.
+      
+      Transcript:
+      ${fullTranscriptText}
+      
+      Output format (JSON only):
+      {
+        "summary": "A concise summary of the meeting...",
+        "tasks": [
+          { "task": "Action item description", "owner": "Name of person responsible (or 'Unknown')", "deadline": "Deadline if mentioned (or 'None')" }
+        ]
       }
-    }
+    `
 
-    // Step 2: Generate AI insights with Gemini
-    const fullTranscript = segments.map(s => `${s.speaker}: ${s.text}`).join('\n\n')
-    
-    const geminiPrompt = `
-Analyze this meeting transcript and extract:
-1. A concise summary (2-3 sentences)
-2. Action items/tasks with owners and deadlines if mentioned
-3. Important deadlines and dates
-
-Transcript:
-${fullTranscript}
-
-Respond with valid JSON in this format:
-{
-  "summary": "Brief meeting summary...",
-  "tasks": [
-    {
-      "task": "Task description",
-      "owner": "Person name or null",
-      "deadline": "Deadline or null"
-    }
-  ],
-  "deadlines": [
-    {
-      "date": "Date mentioned",
-      "description": "What's due"
-    }
-  ]
-}
-`
-
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: geminiPrompt
-          }]
-        }]
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json" }
       })
     })
 
     if (!geminiResponse.ok) {
-      throw new Error(`Gemini API error: ${geminiResponse.statusText}`)
+      const errorText = await geminiResponse.text()
+      console.error('Gemini API error:', errorText)
+      // Don't fail the whole request if AI fails, just provide fallback
     }
 
-    const geminiData = await geminiResponse.json()
-    console.log('Gemini analysis completed')
-
-    // Parse AI insights
-    let insights: AIInsights = {
-      summary: "Meeting analysis completed successfully.",
-      tasks: [],
-      deadlines: []
-    }
+    let insights: AIInsights = { summary: 'Summary could not be generated.', tasks: [] }
 
     try {
-      const aiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
-      const jsonMatch = aiText.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        insights = JSON.parse(jsonMatch[0])
-      }
-    } catch (error) {
-      console.error('Error parsing AI insights:', error)
+      const geminiData = await geminiResponse.json()
+      let content = geminiData.candidates[0].content.parts[0].text
+
+      // Sanitize Gemini output: remove markdown code blocks if present
+      content = content.replace(/```json\n?|\n?```/g, '').trim()
+
+      insights = JSON.parse(content)
+      console.log('Gemini insights generated successfully')
+    } catch (e) {
+      console.error('Error parsing Gemini response:', e)
     }
 
-    // Step 3: Save to database
-    // Create meeting record
+    // 3. Save to Supabase
+    console.log('Saving to database...')
+
+    // Create Meeting
     const { data: meeting, error: meetingError } = await supabase
       .from('meetings')
       .insert({
@@ -202,56 +175,65 @@ Respond with valid JSON in this format:
       .select()
       .single()
 
-    if (meetingError) {
-      throw new Error(`Database error: ${meetingError.message}`)
-    }
+    if (meetingError) throw meetingError
 
-    console.log(`Meeting created with ID: ${meeting.id}`)
+    // Create Transcripts
+    if (formattedTranscript.length > 0) {
+      const transcriptRows = formattedTranscript.map((t, index) => ({
+        meeting_id: meeting.id,
+        speaker_id: t.speaker,
+        speaker_name: t.speaker,
+        text: t.text,
+        order_index: index,
+        timestamp: Math.floor(t.start)
+      }))
 
-    // Save transcript segments
-    const transcriptInserts = segments.map((segment, index) => ({
-      meeting_id: meeting.id,
-      speaker_id: segment.speaker.toLowerCase().replace(' ', '_'),
-      speaker_name: segment.speaker,
-      text: segment.text,
-      order_index: index + 1,
-      timestamp: Math.floor(segment.start)
-    }))
-
-    if (transcriptInserts.length > 0) {
       const { error: transcriptError } = await supabase
         .from('transcripts')
-        .insert(transcriptInserts)
+        .insert(transcriptRows)
 
-      if (transcriptError) {
-        console.error('Error saving transcripts:', transcriptError)
-      }
+      if (transcriptError) throw transcriptError
     }
 
-    // Save tasks
-    const taskInserts = insights.tasks.map(task => ({
-      meeting_id: meeting.id,
-      task: task.task,
-      owner: task.owner,
-      deadline: task.deadline
-    }))
+    // Create Tasks
+    if (insights.tasks.length > 0) {
+      const taskRows = insights.tasks.map(t => ({
+        meeting_id: meeting.id,
+        task: t.task,
+        owner: t.owner,
+        deadline: t.deadline
+      }))
 
-    if (taskInserts.length > 0) {
-      const { error: tasksError } = await supabase
+      const { error: taskError } = await supabase
         .from('tasks')
-        .insert(taskInserts)
+        .insert(taskRows)
 
-      if (tasksError) {
-        console.error('Error saving tasks:', tasksError)
-      }
+      if (taskError) throw taskError
     }
 
-    // Return success response
+    // Initialize Speakers (Unique)
+    const uniqueSpeakers = [...new Set(formattedTranscript.map(t => t.speaker))]
+    if (uniqueSpeakers.length > 0) {
+      const speakerRows = uniqueSpeakers.map(s => ({
+        meeting_id: meeting.id,
+        default_name: s,
+        custom_name: s // Initially same as default
+      }))
+
+      const { error: speakerError } = await supabase
+        .from('speakers')
+        .insert(speakerRows)
+
+      if (speakerError) throw speakerError
+    }
+
+    console.log(`Meeting processed successfully with ID: ${meeting.id}`)
+
     return new Response(
       JSON.stringify({
         success: true,
         meetingId: meeting.id,
-        message: 'Audio processed successfully'
+        message: 'Meeting processed successfully with AI insights'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -261,11 +243,11 @@ Respond with valid JSON in this format:
 
   } catch (error) {
     console.error('Error processing audio:', error)
-    
+
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
