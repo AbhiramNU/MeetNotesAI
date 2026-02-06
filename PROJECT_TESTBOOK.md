@@ -19,7 +19,7 @@
 **Solution**: An AI-powered web app that records, transcribes, and extracts structured insights (summaries, tasks, deadlines) from meetings automatically.
 
 ### Key Differentiators:
-*   **"Antigravity" UI**: A premium, fluid interface that feels alive.
+*   **"Dynamic Fluid" UI**: A premium, interactive interface that feels alive.
 *   **Edge AI**: Uses serverless edge functions for low-latency processing.
 *   **Speaker Diarization**: Knows *who* said *what*.
 
@@ -55,13 +55,13 @@
 *   **A**: "Flash" models are optimized for speed and cost-efficiency, perfect for summarizing long text (transcripts) quickly without the latency of larger models.
 
 **Q: Why Tailwind CSS?**
-*   **A**: Utility-first CSS allows for rapid UI development and keeps bundle sizes small (unused styles are purged). It makes implementing the "Antigravity" custom animations easier via `tailwind.config.js`.
+*   **A**: Utility-first CSS allows for rapid UI development and keeps bundle sizes small (unused styles are purged). It makes implementing the custom dynamic animations easier via `tailwind.config.js`.
 
 ---
 
 ## 4. Key Features Deep Dive
 
-### 🌊 Fluid Background (The "Antigravity" Effect)
+### 🌊 Dynamic Background (Fluid Effect)
 *   **Implementation**: A custom React component (`FluidBackground.tsx`) that tracks mouse coordinates (`clientX`, `clientY`).
 *   **Technique**: Uses a CSS radial-gradient that follows the mouse position using inline styles.
 *   **Why**: Creates an immersive, premium feel that distinguishes the app from generic tools.

@@ -112,53 +112,60 @@ serve(async (req) => {
       })
     }
 
-    // 2. Generate Insights with Gemini
-    console.log('Generating insights with Gemini...')
-    const prompt = `
-      Analyze the following meeting transcript and provide a summary and a list of action items/tasks.
-      
-      Transcript:
-      ${fullTranscriptText}
-      
-      Output format (JSON only):
-      {
-        "summary": "A concise summary of the meeting...",
-        "tasks": [
-          { "task": "Action item description", "owner": "Name of person responsible (or 'Unknown')", "deadline": "Deadline if mentioned (or 'None')" }
-        ]
-      }
-    `
+    let insights: AIInsights = { summary: 'No speech detected in the recording.', tasks: [] }
 
-    const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json" }
+    // 2. Generate Insights with Gemini (Only if transcript exists)
+    if (fullTranscriptText && fullTranscriptText.trim().length > 10) {
+      console.log('Generating insights with Gemini...')
+      const prompt = `
+        Analyze the following meeting transcript and provide a summary and a list of action items/tasks.
+        
+        Transcript:
+        ${fullTranscriptText}
+        
+        Output format (JSON only):
+        {
+          "summary": "A concise summary of the meeting...",
+          "tasks": [
+            { "task": "Action item description", "owner": "Name of person responsible (or 'Unknown')", "deadline": "Deadline if mentioned (or 'None')" }
+          ]
+        }
+      `
+
+      const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json" }
+        })
       })
-    })
 
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text()
-      console.error('Gemini API error:', errorText)
-      // Don't fail the whole request if AI fails, just provide fallback
-    }
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text()
+        console.error('Gemini API error:', errorText)
+        // Don't fail the whole request if AI fails, just provide fallback
+        insights.summary = 'AI summary temporarily unavailable.'
+      } else {
+        try {
+          const geminiData = await geminiResponse.json()
+          let content = geminiData.candidates[0].content.parts[0].text
 
-    let insights: AIInsights = { summary: 'Summary could not be generated.', tasks: [] }
+          // Sanitize Gemini output: remove markdown code blocks if present
+          content = content.replace(/```json\n?|\n?```/g, '').trim()
 
-    try {
-      const geminiData = await geminiResponse.json()
-      let content = geminiData.candidates[0].content.parts[0].text
-
-      // Sanitize Gemini output: remove markdown code blocks if present
-      content = content.replace(/```json\n?|\n?```/g, '').trim()
-
-      insights = JSON.parse(content)
-      console.log('Gemini insights generated successfully')
-    } catch (e) {
-      console.error('Error parsing Gemini response:', e)
+          const parsedInsights = JSON.parse(content)
+          insights = { ...insights, ...parsedInsights }
+          console.log('Gemini insights generated successfully')
+        } catch (e) {
+          console.error('Error parsing Gemini response:', e)
+          insights.summary = 'Error parsing AI summary.'
+        }
+      }
+    } else {
+      console.log('Transcript too short for AI insights.')
     }
 
     // 3. Save to Supabase

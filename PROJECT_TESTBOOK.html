@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeetNotes AI - Project Testbook</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #f97316;
+            border-bottom: 2px solid #f97316;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #c2410c;
+            margin-top: 30px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            color: #ea580c;
+            margin-top: 20px;
+        }
+
+        code {
+            background: #f1f5f9;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        pre {
+            background: #1e293b;
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        blockquote {
+            border-left: 4px solid #f97316;
+            padding-left: 15px;
+            color: #666;
+            font-style: italic;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 5px;
+        }
+
+        .print-btn {
+            background: #f97316;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media print {
+            .print-btn {
+                display: none;
+            }
+
+            body {
+                max-width: 100%;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+
+    <h1>📘 MeetNotes AI - Project Testbook & Viva Guide</h1>
+
+    <h2>📑 Table of Contents</h2>
+    <ol>
+        <li><a href="#executive-summary">Executive Summary</a></li>
+        <li><a href="#architecture--workflow">Architecture & Workflow</a></li>
+        <li><a href="#tech-stack-defense">Tech Stack Defense</a></li>
+        <li><a href="#key-features-deep-dive">Key Features Deep Dive</a></li>
+        <li><a href="#common-viva-questions">Common Viva Questions</a></li>
+        <li><a href="#challenges--solutions">Challenges & Solutions</a></li>
+        <li><a href="#deployment-guide">Deployment Guide</a></li>
+    </ol>
+
+    <hr>
+
+    <h2 id="executive-summary">1. Executive Summary</h2>
+    <p><strong>Project Name</strong>: MeetNotes AI<br>
+        <strong>Tagline</strong>: "Transform meetings into actionable intelligence."<br>
+        <strong>Core Problem</strong>: Professionals spend hours re-listening to recordings or forgetting action items
+        from meetings. Manual note-taking distracts from participation.<br>
+        <strong>Solution</strong>: An AI-powered web app that records, transcribes, and extracts structured insights
+        (summaries, tasks, deadlines) from meetings automatically.
+    </p>
+
+    <h3>Key Differentiators:</h3>
+    <ul>
+        <li><strong>Dynamic Fluid UI</strong>: A premium, interactive interface that feels alive.</li>
+        <li><strong>Edge AI</strong>: Uses serverless edge functions for low-latency processing.</li>
+        <li><strong>Speaker Diarization</strong>: Knows <em>who</em> said <em>what</em>.</li>
+    </ul>
+
+    <h2 id="architecture--workflow">2. Architecture & Workflow</h2>
+    <h3>High-Level Flow:</h3>
+    <ol>
+        <li><strong>Frontend (React)</strong>: Captures audio via MediaRecorder API.</li>
+        <li><strong>Upload</strong>: Audio Blob sent to <strong>Supabase Edge Function</strong>
+            (<code>process-audio</code>).</li>
+        <li><strong>Transcription</strong>: Edge Function sends audio to <strong>Deepgram API</strong> (Nova-2 model) ->
+            Returns JSON transcript.</li>
+        <li><strong>Intelligence</strong>: Transcript sent to <strong>Gemini 1.5 Flash</strong> -> Returns JSON with
+            Summary & Tasks.</li>
+        <li><strong>Storage</strong>:
+            <ul>
+                <li>Meeting Metadata -> <code>meetings</code> table (PostgreSQL)</li>
+                <li>Transcript Segments -> <code>transcripts</code> table</li>
+                <li>Action Items -> <code>tasks</code> table</li>
+            </ul>
+        </li>
+        <li><strong>Display</strong>: Frontend fetches data via Supabase Client and renders it in real-time.</li>
+    </ol>
+
+    <h2 id="tech-stack-defense">3. Tech Stack Defense (Viva Prep)</h2>
+
+    <p><strong>Q: Why React + Vite?</strong><br>
+        <strong>A</strong>: React 18 allows for concurrent rendering (smooth UI). Vite uses ES modules for instant dev
+        server start, unlike Webpack which bundles everything first. It's significantly faster for development.
+    </p>
+
+    <p><strong>Q: Why Supabase instead of Firebase?</strong><br>
+        <strong>A</strong>: Supabase is open-source and based on <strong>PostgreSQL</strong>, a standard relational
+        database. This allows complex queries (SQL) that are harder in Firebase's NoSQL structure. Plus, Row Level
+        Security (RLS) is built directly into the database.
+    </p>
+
+    <p><strong>Q: Why Deepgram?</strong><br>
+        <strong>A</strong>: Deepgram is purpose-built for audio. It's faster and cheaper than OpenAI's Whisper API for
+        this use case, and offers better diarization (speaker detection).
+    </p>
+
+    <p><strong>Q: Why Gemini 1.5 Flash?</strong><br>
+        <strong>A</strong>: "Flash" models are optimized for speed and cost-efficiency, perfect for summarizing long
+        text (transcripts) quickly without the latency of larger models.
+    </p>
+
+    <p><strong>Q: Why Tailwind CSS?</strong><br>
+        <strong>A</strong>: Utility-first CSS allows for rapid UI development and keeps bundle sizes small (unused
+        styles are purged). It makes implementing the custom dynamic animations easier via
+        <code>tailwind.config.js</code>.
+    </p>
+
+    <h2 id="key-features-deep-dive">4. Key Features Deep Dive</h2>
+
+    <h3>🌊 Dynamic Background (Fluid Effect)</h3>
+    <ul>
+        <li><strong>Implementation</strong>: A custom React component (<code>FluidBackground.tsx</code>) that tracks
+            mouse coordinates (<code>clientX</code>, <code>clientY</code>).</li>
+        <li><strong>Technique</strong>: Uses a CSS radial-gradient that follows the mouse position using inline styles.
+        </li>
+        <li><strong>Why</strong>: Creates an immersive, premium feel that distinguishes the app from generic tools.</li>
+    </ul>
+
+    <h3>🎙️ Audio Processing Pipeline</h3>
+    <ul>
+        <li><strong>Blob Handling</strong>: We record audio chunks into a <code>Blob</code> (Binary Large Object).</li>
+        <li><strong>FormData</strong>: We send this blob as <code>multipart/form-data</code> to the backend, imitating a
+            standard file upload.</li>
+        <li><strong>Sanitization</strong>: We implemented a Regex cleaner to strip Markdown formatting from Gemini's
+            JSON response to prevent parsing errors.</li>
+    </ul>
+
+    <h2 id="common-viva-questions">5. Common Viva Questions</h2>
+
+    <p><strong>Q: How do you handle large audio files?</strong><br>
+        <strong>A</strong>: We stream the audio to the backend. In a production environment, we would upload to storage
+        (S3/Supabase Storage) first and generate a signed URL, but for this demo, we send distinct blobs to the Edge
+        Function (limited to 6MB-10MB usually).
+    </p>
+
+    <p><strong>Q: What involves "Diarization"?</strong><br>
+        <strong>A</strong>: Diarization is the process of partitioning an input audio stream into homogeneous segments
+        according to user identity. Ideally, it answers "who spoke when".
+    </p>
+
+    <p><strong>Q: How is the data secured?</strong><br>
+        <strong>A</strong>: We use RLS (Row Level Security). Users can only <code>SELECT</code> or <code>INSERT</code>
+        rows where <code>user_id</code> matches their authenticated ID.
+    </p>
+
+    <h2 id="challenges--solutions">6. Challenges & Solutions</h2>
+
+    <p><strong>Challenge 1: JSON Parsing from AI</strong><br>
+        <em>Problem</em>: Gemini often returns valid JSON wrapped in Markdown code blocks
+        (<code>```json ... ```</code>), causing <code>JSON.parse</code> to crash.<br>
+        <em>Solution</em>: Implemented a backend sanitizer <code>content.replace(...)</code> before parsing.
+    </p>
+
+    <p><strong>Challenge 2: Input Visibility</strong><br>
+        <em>Problem</em>: White text on white glass background was invisible.<br>
+        <em>Solution</em>: Switched to a dark semi-transparent background (<code>bg-black/40</code>) for inputs to
+        ensure contrast on all themes.
+    </p>
+
+    <h2 id="deployment-guide">7. Deployment Guide</h2>
+
+    <h3>Deployment to Vercel</h3>
+    <ol>
+        <li>Push to GitHub.</li>
+        <li>Import project in Vercel.</li>
+        <li><strong>Configure Environment Variables</strong>: Copy <code>VITE_SUPABASE_URL</code> etc. from
+            <code>.env</code>.</li>
+        <li>Click Deploy.</li>
+    </ol>
+
+</body>
+
+</html>

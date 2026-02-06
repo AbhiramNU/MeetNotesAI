@@ -2,13 +2,13 @@
 
 > **"Transform meetings into actionable intelligence."**
 
-A premium, "Antigravity" SaaS application for AI-powered meeting transcription, summarization, and task management. Featuring a stunning fluid interface and enterprise-grade AI processing.
+A premium, dynamic SaaS application for AI-powered meeting transcription, summarization, and task management. Featuring a stunning fluid interface and enterprise-grade AI processing.
 
-![MeetNotes AI Fluid UI](https://via.placeholder.com/800x400?text=MeetNotes+Antigravity+UI)
+![MeetNotes AI Fluid UI](https://via.placeholder.com/800x400?text=MeetNotes+Fluid+UI)
 
 ## ✨ key Features
 
-- **🌊 Antigravity Design**: An immersive, fluid background that reacts to your mouse interactions.
+- **🌊 Fluid Dynamic Design**: An immersive, interactive background that reacts to your mouse interactions.
 - **🎙️ Smart Recording**: Browser-based recording with real-time audio visualization.
 - **🧠 Intelligent Insights**: Powered by **Gemini 1.5 Flash** to extract Tasks, Deadlines, and Summaries.
 - **🗣️ Speaker Diarization**: Deepgram-powered precision to know exactly who said what.
@@ -44,10 +44,10 @@ A premium, "Antigravity" SaaS application for AI-powered meeting transcription, 
    npm run dev
    ```
 
-## 🎨 The "Antigravity" Theme
+## 🎨 The "Fluid" Theme
 
 We moved away from generic flat designs to a **Core Orange + Fluid Black** aesthetic.
-*   **Fluid Background**: A living, breathing backdrop.
+*   **Dynamic Background**: A living, breathing backdrop.
 *   **Glassmorphism**: Panels float above the fluid layer.
 *   **Neon Orange Accents**: High-energy call-to-actions.
 
