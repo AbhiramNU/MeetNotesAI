@@ -153,12 +153,17 @@ serve(async (req) => {
           const geminiData = await geminiResponse.json()
           let content = geminiData.candidates[0].content.parts[0].text
 
-          // Sanitize Gemini output: remove markdown code blocks if present
-          content = content.replace(/```json\n?|\n?```/g, '').trim()
-
-          const parsedInsights = JSON.parse(content)
-          insights = { ...insights, ...parsedInsights }
-          console.log('Gemini insights generated successfully')
+          // Sanitize Gemini output: Extract JSON object only
+          const jsonMatch = content.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            content = jsonMatch[0]
+            const parsedInsights = JSON.parse(content)
+            insights = { ...insights, ...parsedInsights }
+            console.log('Gemini insights generated successfully')
+          } else {
+            console.error('No JSON found in Gemini response:', content)
+            insights.summary = 'Error: AI returned invalid format.'
+          }
         } catch (e) {
           console.error('Error parsing Gemini response:', e)
           insights.summary = 'Error parsing AI summary.'
